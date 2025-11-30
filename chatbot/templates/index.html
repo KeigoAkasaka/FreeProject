@@ -326,7 +326,7 @@
             stampPicker.classList.remove('active');
         }
 
-        function addMessage(text, isUser) {
+        function addMessage(text, isUser, iconPath = null) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user' : 'ai'}`;
 
@@ -334,7 +334,12 @@
                 const avatarDiv = document.createElement('div');
                 avatarDiv.className = 'avatar';
                 const img = document.createElement('img');
-                img.src = "{{ url_for('static', filename='icon/gokuu.png') }}";
+                // iconPathが指定されていればそれを使い、なければデフォルト（悟空）を使う
+                if (iconPath) {
+                    img.src = `/static/${iconPath}`;
+                } else {
+                    img.src = "{{ url_for('static', filename='icon/gokuu.png') }}";
+                }
                 img.alt = "AI";
                 avatarDiv.appendChild(img);
                 messageDiv.appendChild(avatarDiv);
@@ -371,7 +376,15 @@
             const avatarDiv = document.createElement('div');
             avatarDiv.className = 'avatar';
             const img = document.createElement('img');
-            img.src = "{{ url_for('static', filename='icon/gokuu.png') }}";
+
+            // 背景画像に「shenron」が含まれていれば神龍アイコンを使用
+            const bgImage = document.body.style.backgroundImage;
+            if (bgImage && bgImage.toLowerCase().includes('shenron')) {
+                img.src = "{{ url_for('static', filename='icon/shenron1.png') }}";
+            } else {
+                img.src = "{{ url_for('static', filename='icon/gokuu.png') }}";
+            }
+
             img.alt = "AI";
             avatarDiv.appendChild(img);
             messageDiv.appendChild(avatarDiv);
@@ -423,7 +436,27 @@
                 removeLoading();
 
                 if (data.status === 'success') {
-                    addMessage(data.message, false);
+                    // 複数メッセージがある場合（神龍モードなど）
+                    if (data.messages && Array.isArray(data.messages)) {
+                        for (let i = 0; i < data.messages.length; i++) {
+                            // メッセージを表示
+                            addMessage(data.messages[i], false, data.new_icon);
+
+                            // 最後のメッセージでなければ、少し待機
+                            if (i < data.messages.length - 1) {
+                                await new Promise(resolve => setTimeout(resolve, 1000)); // 1秒待機
+                            }
+                        }
+                    } else {
+                        // 通常の単一メッセージ
+                        addMessage(data.message, false, data.new_icon);
+                    }
+
+                    // 背景画像の更新（メッセージ表示後に更新）
+                    if (data.new_background) {
+                        document.body.style.backgroundImage = `url('/static/${data.new_background}')`;
+                    }
+
                 } else {
                     addMessage(`エラー: ${data.error}`, false);
                 }

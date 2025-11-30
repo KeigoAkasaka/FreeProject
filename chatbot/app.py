@@ -1,5 +1,5 @@
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, session
 import os
 import cohere
 from dotenv import load_dotenv
@@ -11,6 +11,7 @@ from datetime import datetime
 load_dotenv()
 
 app = Flask(__name__)
+app.secret_key = os.urandom(24)  # セッションのために秘密鍵を設定
 
 # Cohere APIキーを環境変数から取得
 cohere_api_key = os.getenv('COHERE_API_KEY')
@@ -152,6 +153,57 @@ def chat():
                 ai_input_message = "（ユーザーが「大丈夫」のスタンプを送信しました）"
             else:
                 ai_input_message = f"（ユーザーが「{stamp_name}」というスタンプを送信しました）"
+        
+        # 神龍モードの判定（セッションで状態管理）
+        if session.get('shenron_mode'):
+            # 願いを叶える（AI応答生成）
+            # 神龍の威厳ある口調で回答を生成させる
+            shenron_instruction = "あなたはドラゴンボールの神龍として、ユーザーの願い（質問）に答えてください。威厳のある口調で、簡潔に答えてください。「〜だ」「〜であろう」などの語尾を使ってください。\n\n"
+            
+            response = co.chat(
+                model='command-a-03-2025',
+                message=shenron_instruction + ai_input_message,
+                max_tokens=300,
+                temperature=0.7,
+            )
+            ai_response = response.text.strip()
+            
+            # 指定されたフォーマットで応答を作成（3つのメッセージに分割）
+            messages = [
+                "たやすいことだ　かなえられん願いはない",
+                ai_response,
+                "願いはかなえてやった　ではさらばだ"
+            ]
+            
+            # 通常の背景に戻す（ランダム選択）
+            import random
+            haikei_dir = os.path.join(app.static_folder, 'haikei')
+            new_background = None
+            if os.path.exists(haikei_dir):
+                haikei_files = [f for f in os.listdir(haikei_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp'))]
+                if haikei_files:
+                    new_background = 'haikei/' + random.choice(haikei_files)
+            
+            # 神龍モード終了
+            session.pop('shenron_mode', None)
+            
+            return jsonify({
+                'messages': messages, # リストで返す
+                'status': 'success',
+                'new_background': new_background,
+                'new_icon': 'icon/shenron1.png' # 今回のメッセージは神龍アイコン
+            })
+
+        # 神龍呼び出し判定
+        shenron_keywords = ['神龍', 'しぇんろん', 'シェンロン']
+        if any(keyword in user_message for keyword in shenron_keywords):
+            session['shenron_mode'] = True
+            return jsonify({
+                'message': 'さあ願いを　いえ　どんな願いもひとつだけかなえてやろう…',
+                'status': 'success',
+                'new_background': 'haikei_shenron/jaikei_shenron.jpg',
+                'new_icon': 'icon/shenron1.png'
+            })
         
         # Cohere Chat APIを使用して応答を生成
         # 利用可能なモデル: command-a-03-2025, command-r-08-2024, command-r-plus-08-2024
