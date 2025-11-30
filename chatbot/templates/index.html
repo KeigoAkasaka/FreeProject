@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>かめはめトークZ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .chat-container {
+            width: 90%;
+            max-width: 800px;
+            height: 90vh;
+            background: rgba(255, 255, 255, 0.85);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.0);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: rgba(245, 245, 245, 0.0);
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-start;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.ai {
+            justify-content: flex-start;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 10px;
+            background-color: #fff;
+            border: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 18px;
+            border-radius: 18px;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.ai .message-content {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+            position: relative;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .chat-input:focus {
+            border-color: #667eea;
+        }
+
+        .action-button {
+            padding: 12px;
+            background: #f0f0f0;
+            color: #333;
+            border: none;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .action-button:hover {
+            background: #e0e0e0;
+        }
+
+        .send-button {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .send-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .send-button:active {
+            transform: translateY(0);
+        }
+
+        .send-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .stamp-picker {
+            position: absolute;
+            bottom: 80px;
+            left: 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            display: none;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            z-index: 100;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .stamp-picker.active {
+            display: grid;
+        }
+
+        .stamp-option {
+            width: 60px;
+            height: 60px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            border-radius: 10px;
+            padding: 5px;
+        }
+
+        .stamp-option:hover {
+            transform: scale(1.1);
+            background: #f5f5f5;
+        }
+
+        .stamp-option img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .message-stamp {
+            width: 100px;
+            height: 100px;
+            object-fit: contain;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(102, 126, 234, 0.3);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body {% if background_image
+    %}style="background: url('{{ url_for('static', filename=background_image) }}') center/cover no-repeat;" {% else
+    %}style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);" {% endif %}>
+    <div class="chat-container">
+        <div class="chat-header">
+            <img src="{{ url_for('static', filename='icon/suusinchuu.png') }}" alt="アイコン"
+                style="width: 40px; height: 40px; vertical-align: middle; margin-right: 10px;">
+            かめはめトークZ
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="message ai">
+                <div class="avatar">
+                    <img src="{{ url_for('static', filename='icon/gokuu.png') }}" alt="AI">
+                </div>
+                <div class="message-content">
+                    {{ initial_message }}
+                </div>
+            </div>
+        </div>
+        <div class="chat-input-container">
+            <div class="stamp-picker" id="stampPicker">
+                {% for stamp in stamps %}
+                <div class="stamp-option" onclick="sendStamp('{{ stamp }}')">
+                    <img src="{{ url_for('static', filename='stamp/' + stamp) }}" alt="{{ stamp }}">
+                </div>
+                {% endfor %}
+            </div>
+            <button class="action-button" onclick="toggleStampPicker()" title="スタンプ">
+                ☺
+            </button>
+            <input type="text" class="chat-input" id="messageInput" placeholder="オラに何か聞きてぇことあっか？"
+                onkeypress="handleKeyPress(event)"><button class="send-button" id="sendButton" onclick="sendMessage()">
+                送信
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const stampPicker = document.getElementById('stampPicker');
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        function toggleStampPicker() {
+            stampPicker.classList.toggle('active');
+        }
+
+        // スタンプピッカー以外をクリックしたら閉じる
+        document.addEventListener('click', function (event) {
+            if (!event.target.closest('.stamp-picker') && !event.target.closest('.action-button')) {
+                stampPicker.classList.remove('active');
+            }
+        });
+
+        function sendStamp(filename) {
+            const message = `[STAMP:${filename}]`;
+            sendMessage(message);
+            stampPicker.classList.remove('active');
+        }
+
+        function addMessage(text, isUser) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'ai'}`;
+
+            if (!isUser) {
+                const avatarDiv = document.createElement('div');
+                avatarDiv.className = 'avatar';
+                const img = document.createElement('img');
+                img.src = "{{ url_for('static', filename='icon/gokuu.png') }}";
+                img.alt = "AI";
+                avatarDiv.appendChild(img);
+                messageDiv.appendChild(avatarDiv);
+            }
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+
+            // スタンプかどうか判定
+            if (text.startsWith('[STAMP:') && text.endsWith(']')) {
+                const filename = text.substring(7, text.length - 1);
+                const stampImg = document.createElement('img');
+                stampImg.src = `/static/stamp/${filename}`;
+                stampImg.className = 'message-stamp';
+                contentDiv.appendChild(stampImg);
+                // スタンプの場合は背景色を透明にするなどの調整も可能だが、
+                // 今回はmessage-contentのスタイルをそのまま使用
+            } else {
+                contentDiv.textContent = text;
+            }
+
+            messageDiv.appendChild(contentDiv);
+            chatMessages.appendChild(messageDiv);
+
+            // スクロールを最下部に
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function showLoading() {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ai';
+            messageDiv.id = 'loadingMessage';
+
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = 'avatar';
+            const img = document.createElement('img');
+            img.src = "{{ url_for('static', filename='icon/gokuu.png') }}";
+            img.alt = "AI";
+            avatarDiv.appendChild(img);
+            messageDiv.appendChild(avatarDiv);
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.innerHTML = '<div class="loading"></div>';
+
+            messageDiv.appendChild(contentDiv);
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function removeLoading() {
+            const loadingMessage = document.getElementById('loadingMessage');
+            if (loadingMessage) {
+                loadingMessage.remove();
+            }
+        }
+
+        async function sendMessage(customMessage = null) {
+            const message = customMessage || messageInput.value.trim();
+
+            if (!message) {
+                return;
+            }
+
+            // ユーザーメッセージを表示
+            addMessage(message, true);
+            if (!customMessage) {
+                messageInput.value = '';
+            }
+            sendButton.disabled = true;
+            if (!customMessage) sendButton.textContent = '送信中...';
+
+            // ローディング表示
+            showLoading();
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+
+                const data = await response.json();
+                removeLoading();
+
+                if (data.status === 'success') {
+                    addMessage(data.message, false);
+                } else {
+                    addMessage(`エラー: ${data.error}`, false);
+                }
+            } catch (error) {
+                removeLoading();
+                addMessage(`エラーが発生しました: ${error.message}`, false);
+            } finally {
+                sendButton.disabled = false;
+                sendButton.textContent = '送信';
+                messageInput.focus();
+            }
+        }
+
+        // ページ読み込み時にフォーカス
+        window.onload = () => {
+            messageInput.focus();
+        };
+    </script>
+</body>
+
+</html>
