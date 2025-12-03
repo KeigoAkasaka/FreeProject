@@ -257,6 +257,30 @@
             margin-bottom: 10px;
             text-align: center;
         }
+
+        .energy-wave {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle, #fff 0%, #00ffff 50%, #0000ff 100%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1000;
+            transform: translate(-50%, -50%);
+            animation: energyWave 1s ease-out forwards;
+        }
+
+        @keyframes energyWave {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(20);
+                opacity: 0;
+            }
+        }
     </style>
 </head>
 
@@ -324,6 +348,24 @@
             const message = `[STAMP:${filename}]`;
             sendMessage(message);
             stampPicker.classList.remove('active');
+        }
+
+        function triggerEnergyWave() {
+            const rect = sendButton.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            const wave = document.createElement('div');
+            wave.className = 'energy-wave';
+            wave.style.left = `${centerX}px`;
+            wave.style.top = `${centerY}px`;
+
+            document.body.appendChild(wave);
+
+            // アニメーション終了後に要素を削除
+            setTimeout(() => {
+                wave.remove();
+            }, 1000);
         }
 
         function addMessage(text, isUser, iconPath = null) {
@@ -412,6 +454,9 @@
                 return;
             }
 
+            // エネルギー波アニメーション発動
+            triggerEnergyWave();
+
             // ユーザーメッセージを表示
             addMessage(message, true);
             if (!customMessage) {
@@ -436,6 +481,26 @@
                 removeLoading();
 
                 if (data.status === 'success') {
+                    // 神龍モードへの切り替え判定（背景画像名に'shenron'が含まれる場合）
+                    if (data.new_background && data.new_background.toLowerCase().includes('shenron')) {
+                        // チャットコンテナを非表示にする
+                        const chatContainer = document.querySelector('.chat-container');
+                        chatContainer.style.opacity = '0';
+                        chatContainer.style.transition = 'opacity 1s';
+
+                        // 背景画像を更新
+                        document.body.style.backgroundImage = `url('/static/${data.new_background}')`;
+
+                        // 5秒待機
+                        await new Promise(resolve => setTimeout(resolve, 5000));
+
+                        // チャットコンテナを表示
+                        chatContainer.style.opacity = '1';
+                    } else if (data.new_background && !data.messages) {
+                        // 通常の背景更新（メッセージリストがない場合のみ即時更新）
+                        document.body.style.backgroundImage = `url('/static/${data.new_background}')`;
+                    }
+
                     // 複数メッセージがある場合（神龍モードなど）
                     if (data.messages && Array.isArray(data.messages)) {
                         for (let i = 0; i < data.messages.length; i++) {
@@ -447,14 +512,15 @@
                                 await new Promise(resolve => setTimeout(resolve, 1000)); // 1秒待機
                             }
                         }
+
+                        // メッセージ表示完了後の背景更新（神龍モード終了時など）
+                        if (data.new_background) {
+                            await new Promise(resolve => setTimeout(resolve, 3000)); // 3秒待機
+                            document.body.style.backgroundImage = `url('/static/${data.new_background}')`;
+                        }
                     } else {
                         // 通常の単一メッセージ
                         addMessage(data.message, false, data.new_icon);
-                    }
-
-                    // 背景画像の更新（メッセージ表示後に更新）
-                    if (data.new_background) {
-                        document.body.style.backgroundImage = `url('/static/${data.new_background}')`;
                     }
 
                 } else {
